@@ -32,45 +32,61 @@ def calculate_aggregated_threat_score(departments):
 
 class TestCyberSecurityScore(unittest.TestCase):
 
-    def test_aggregated_score_no_outliers(self):
-        departments = generate_random_data(department_count=5, user_range=(10, 200), threat_range=(50, 60))
+    def test_all_departments_same_threat_scores(self):
+        departments = [{"users": 100, "threat_scores": [70] * 100} for _ in range(5)]
+        score = calculate_aggregated_threat_score(departments)
+        self.assertEqual(score, 70)
+
+    def test_one_high_score_department(self):
+        departments = [
+            {"users": 100, "threat_scores": [10] * 100},
+            {"users": 100, "threat_scores": [90] * 100},
+        ]
+        score = calculate_aggregated_threat_score(departments)
+        self.assertEqual(score, 50)
+
+    def test_one_high_user_in_low_threat_department(self):
+        departments = [
+            {"users": 100, "threat_scores": [10] * 99 + [90]},
+            {"users": 100, "threat_scores": [30] * 100},
+        ]
+        score = calculate_aggregated_threat_score(departments)
+        self.assertGreater(score, 30)
+        self.assertLess(score, 50)
+
+    def test_departments_with_different_user_counts(self):
+        departments = [
+            {"users": 10, "threat_scores": [10] * 10},
+            {"users": 50, "threat_scores": [70] * 50},
+            {"users": 100, "threat_scores": [50] * 100},
+        ]
         score = calculate_aggregated_threat_score(departments)
         self.assertGreaterEqual(score, 50)
-        self.assertLessEqual(score, 60)
-
-    def test_aggregated_score_with_high_variance(self):
-        departments = generate_random_data(department_count=5, user_range=(50, 150), threat_range=(0, 90))
-        score = calculate_aggregated_threat_score(departments)
-        self.assertGreaterEqual(score, 0)
-        self.assertLessEqual(score, 90)
-    
-    def test_edge_case_min_values(self):
-        departments = [{"users": 10, "threat_scores": [0]*10} for _ in range(5)]
-        score = calculate_aggregated_threat_score(departments)
-        self.assertEqual(score, 0)
-    
-    def test_edge_case_max_values(self):
-        departments = [{"users": 200, "threat_scores": [90]*200} for _ in range(5)]
-        score = calculate_aggregated_threat_score(departments)
-        self.assertEqual(score, 90)
+        self.assertLessEqual(score, 70)
 
     def test_no_users(self):
         departments = [{"users": 0, "threat_scores": []} for _ in range(5)]
         score = calculate_aggregated_threat_score(departments)
         self.assertEqual(score, 0)
 
-    def test_all_departments_same_threat_scores(self):
-        departments = [{"users": 100, "threat_scores": [70]*100} for _ in range(5)]
+    def test_edge_case_min_values(self):
+        departments = [{"users": 10, "threat_scores": [0] * 10} for _ in range(5)]
         score = calculate_aggregated_threat_score(departments)
-        self.assertEqual(score, 70)
+        self.assertEqual(score, 0)
 
-    def test_one_high_score_department(self):
+    def test_edge_case_max_values(self):
+        departments = [{"users": 200, "threat_scores": [90] * 200} for _ in range(5)]
+        score = calculate_aggregated_threat_score(departments)
+        self.assertEqual(score, 90)
+
+    def test_high_threat_users_in_department(self):
         departments = [
-            {"users": 100, "threat_scores": [10]*100},
-            {"users": 100, "threat_scores": [90]*100},
+            {"users": 50, "threat_scores": [10] * 49 + [90]},
+            {"users": 100, "threat_scores": [30] * 100},
         ]
         score = calculate_aggregated_threat_score(departments)
-        self.assertEqual(score, 50)
+        self.assertGreater(score, 30)
+        self.assertLess(score, 90)
 
 if __name__ == "__main__":
     unittest.main()
